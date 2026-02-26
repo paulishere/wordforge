@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Word Forge</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Word Forge">
+<meta name="theme-color" content="#1a1a2e">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Nunito',sans-serif;background:#1a1a2e;color:#f0f0f0;overflow:hidden;height:100vh;width:100vw;touch-action:manipulation}
+h1,h2,h3{font-family:'Fredoka One',cursive}
+.screen{display:none;width:100%;height:100%;position:absolute;top:0;left:0}
+.screen.active{display:flex;flex-direction:column}
+.fade-in{animation:fadeIn .4s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{from{filter:brightness(1);transform:scale(1)}to{filter:brightness(1.3);transform:scale(1.05)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 20px rgba(255,215,0,.2)}50%{box-shadow:0 0 30px rgba(255,215,0,.5)}}
+@keyframes slotPop{from{transform:scale(1.3)}to{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes confettiFall{to{top:110vh;transform:rotate(720deg)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes buildReveal{0%{transform:scale(0) rotate(-10deg);opacity:0}60%{transform:scale(1.15) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes growPop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes shrinkPop{0%{transform:scale(1)}40%{transform:scale(.8)}100%{transform:scale(1)}}
+@keyframes bigGrow{0%{transform:scale(1)}30%{transform:scale(1.4)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
+
+/* BUTTONS */
+.btn{font-family:'Fredoka One',cursive;font-size:1.3rem;padding:16px 48px;border:none;border-radius:16px;cursor:pointer;transition:transform .15s;user-select:none}
+.btn:active{transform:scale(.95)}
+.btn-primary{background:linear-gradient(135deg,#e94560,#c23152);color:#fff;box-shadow:0 6px 20px rgba(233,69,96,.4)}
+.btn-secondary{background:linear-gradient(135deg,#4a6fa5,#3a5a8c);color:#fff;font-size:1.1rem;padding:12px 32px}
+.btn-success{background:linear-gradient(135deg,#4ade80,#22c55e);color:#1a1a2e;box-shadow:0 6px 20px rgba(74,222,128,.4)}
+.btn-gold{background:linear-gradient(135deg,#FFD700,#f59e0b);color:#1a1a2e;box-shadow:0 6px 20px rgba(255,215,0,.4)}
+
+/* TITLE */
+#title-screen{align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)}
+#title-screen h1{font-size:3.5rem;color:#FFD700;text-shadow:0 0 30px rgba(255,215,0,.4),0 4px 8px rgba(0,0,0,.5)}
+.subtitle{font-size:1.2rem;color:#a0a0b0;margin-bottom:2rem}
+.anvil-icon{font-size:5rem;margin-bottom:1rem;animation:glow 2s ease-in-out infinite alternate}
+
+/* BUILD HEADER */
+.build-header{display:flex;align-items:center;gap:14px;padding:10px 20px;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);width:100%;flex-shrink:0}
+.bh-icon{font-size:2rem;transition:transform .4s;min-width:40px;text-align:center}
+.bh-icon.grow{animation:growPop .4s ease}
+.bh-icon.shrink{animation:shrinkPop .4s ease}
+.bh-icon.big-grow{animation:bigGrow .6s ease}
+.bh-ghost{opacity:.15;font-size:2rem;position:absolute;left:20px}
+.bh-right{flex:1;display:flex;flex-direction:column;gap:3px}
+.bh-label{font-size:.7rem;color:#a0a0b0;display:flex;justify-content:space-between;align-items:center}
+.bh-label-name{font-weight:700;color:#f0f0f0;font-size:.8rem}
+.bh-bar{height:12px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+.bh-fill{height:100%;border-radius:6px;transition:width .5s cubic-bezier(.25,.46,.45,.94);min-width:0}
+.bh-fill.q-bronze{background:linear-gradient(90deg,#8B6914,#CD7F32)}
+.bh-fill.q-silver{background:linear-gradient(90deg,#909090,#C0C0C0)}
+.bh-fill.q-gold{background:linear-gradient(90deg,#DAA520,#FFD700,#FFF8DC)}
+.bh-tier{position:absolute;height:100%;width:2px;background:rgba(255,255,255,.25);top:0}
+.bh-dots{display:flex;gap:4px;align-items:center}
+.bh-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15);transition:all .3s}
+.bh-dot.active{background:#FFD700;box-shadow:0 0 6px rgba(255,215,0,.5)}
+.bh-dot.done{background:#4ade80}
+
+/* VILLAGE */
+#village-screen{background:linear-gradient(180deg,#87CEEB 0%,#87CEEB 40%,#5a8f3c 40%,#4a7a2e 100%)}
+.village-header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:rgba(0,0,0,.2);backdrop-filter:blur(8px)}
+.village-header h2{font-size:1.4rem;color:#fff}
+.materials-bar{display:flex;gap:16px}
+.material-count{display:flex;align-items:center;gap:4px;font-weight:700;background:rgba(0,0,0,.3);padding:6px 12px;border-radius:20px}
+.village-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:16px;padding:24px;align-items:center;justify-items:center}
+.building-slot{width:100%;max-width:180px;aspect-ratio:1;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:transform .2s;position:relative;padding:12px}
+.building-slot:active{transform:scale(.95)}
+.building-slot.locked{background:rgba(0,0,0,.2);border:3px dashed rgba(255,255,255,.3)}
+.building-slot.available{background:rgba(255,255,255,.15);border:3px solid rgba(255,215,0,.6);animation:pulse 2s ease-in-out infinite}
+.building-slot.built{background:rgba(255,255,255,.1);border:3px solid rgba(74,222,128,.5)}
+.building-icon{font-size:3rem}
+.building-name{font-weight:700;font-size:.85rem;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.5);color:#fff}
+.building-quality{position:absolute;top:8px;right:8px;font-size:1.2rem}
+.stats-bar{display:flex;justify-content:center;gap:24px;padding:12px;background:rgba(0,0,0,.2)}
+.stat-item{display:flex;align-items:center;gap:6px;font-size:.9rem;color:#a0a0b0}
+
+/* CHALLENGE */
+.challenge-container{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:12px;overflow-y:auto}
+.stage-label{font-size:.85rem;text-transform:uppercase;letter-spacing:3px;color:#a0a0b0}
+.challenge-title{font-size:1.6rem;text-align:center}
+.challenge-instruction{font-size:1rem;color:#a0a0b0;text-align:center;max-width:600px;line-height:1.5}
+
+/* DECODE */
+#decode-screen{background:linear-gradient(135deg,#1a1a2e,#2d1b4e)}
+.anvil-area{display:flex;gap:8px;justify-content:center;align-items:center;min-height:70px;padding:12px 20px;margin:4px 0;background:rgba(255,255,255,.04);border-radius:16px;border:2px dashed rgba(255,215,0,.25);min-width:280px}
+.anvil-slot{width:48px;height:56px;border-radius:12px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:1.7rem;color:#FFD700;transition:all .2s}
+.anvil-slot.filled{background:rgba(255,215,0,.12);border-color:#FFD700;animation:slotPop .25s cubic-bezier(.175,.885,.32,1.275)}
+.anvil-slot.correct-flash{background:rgba(74,222,128,.2);border-color:#4ade80;color:#4ade80}
+.anvil-slot.wrong-flash{background:rgba(233,69,96,.2);border-color:#e94560;color:#e94560;animation:shake .4s ease-in-out}
+.letter-tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:380px;margin-top:8px}
+.letter-tile{width:52px;height:60px;border-radius:14px;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.06));border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:1.7rem;color:#f0f0f0;cursor:pointer;transition:all .15s;user-select:none}
+.letter-tile:active{transform:scale(.9)}
+.letter-tile.used{opacity:.2;pointer-events:none;transform:scale(.85)}
+.hear-btn{font-family:'Fredoka One',cursive;font-size:1rem;padding:10px 24px;border:none;border-radius:30px;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;box-shadow:0 4px 15px rgba(124,58,237,.4);display:flex;align-items:center;gap:8px;transition:transform .15s}
+.hear-btn:active{transform:scale(.95)}
+
+/* READ */
+#read-screen{background:linear-gradient(135deg,#1a1a2e,#1b2e4e)}
+.read-top{display:flex;align-items:center;gap:12px;width:100%;max-width:600px}
+.forge-container{flex:1}
+.forge-bar{height:14px;border-radius:7px;background:rgba(255,255,255,.1);overflow:hidden}
+.forge-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,#CD7F32,#e94560,#FFD700);width:0%;transition:width .3s,filter .3s}
+.forge-label{text-align:center;font-size:.8rem;color:#a0a0b0;margin-top:4px}
+.miss-btn{font-family:'Fredoka One',cursive;font-size:1rem;padding:10px 16px;border:none;border-radius:14px;cursor:pointer;background:rgba(233,69,96,.15);border:2px solid rgba(233,69,96,.4);color:#e94560;display:flex;align-items:center;gap:6px;transition:all .15s;user-select:none;white-space:nowrap;flex-shrink:0}
+.miss-btn:active{transform:scale(.95);background:rgba(233,69,96,.3)}
+.miss-btn .miss-count{background:rgba(233,69,96,.3);padding:2px 8px;border-radius:10px;font-size:.85rem}
+.passage-box{background:rgba(255,255,255,.06);border-radius:20px;padding:24px;max-width:600px;width:100%;border:2px solid rgba(255,255,255,.08);max-height:260px;overflow-y:auto}
+.passage-text{font-size:1.3rem;line-height:2.2;display:flex;flex-wrap:wrap;gap:4px}
+.word-token{padding:4px 6px;border-radius:8px;cursor:pointer;transition:all .15s;display:inline-block}
+.word-token.read{color:#4ade80;background:rgba(74,222,128,.1)}
+.word-token.missed{color:#e94560;background:rgba(233,69,96,.15);text-decoration:underline}
+.word-token.current{background:rgba(255,215,0,.15);color:#FFD700;box-shadow:0 0 10px rgba(255,215,0,.2)}
+.word-token.unread{color:#a0a0b0}
+
+/* COMPREHEND */
+#comprehend-screen{background:linear-gradient(135deg,#1a1a2e,#1b4e2e)}
+.comp-options{display:flex;flex-direction:column;gap:12px;width:100%;max-width:550px;margin-top:8px}
+.comp-option{font-family:'Nunito',sans-serif;font-size:1.1rem;font-weight:600;padding:18px 24px;border-radius:16px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);color:#f0f0f0;cursor:pointer;text-align:left;transition:all .2s}
+.comp-option:active{transform:scale(.98)}
+.comp-option.correct{background:rgba(74,222,128,.2);border-color:#4ade80;color:#4ade80}
+.comp-option.incorrect{background:rgba(233,69,96,.2);border-color:#e94560;color:#e94560}
+
+/* REWARD */
+#reward-screen{align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#2e1a1a)}
+.reward-icon{font-size:6rem;margin-bottom:8px}.reward-title{font-size:2rem;margin-bottom:8px}
+.reward-detail{font-size:1.05rem;color:#a0a0b0;text-align:center;margin-bottom:20px;line-height:1.6}
+.reward-materials{display:flex;gap:24px;margin-bottom:28px}
+.reward-material{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:2rem}
+.reward-material span{font-size:.9rem;font-weight:700}
+.reward-stars{font-size:2.5rem;margin-bottom:16px;letter-spacing:8px}
+.confetti-piece{position:fixed;width:10px;height:10px;top:-10px;z-index:100;animation:confettiFall linear forwards}
+
+/* COMPLETE */
+#complete-screen{align-items:center;justify-content:center;background:linear-gradient(180deg,#1a0a2e 0%,#0f3460 40%,#2d5a1e 60%,#1a4a0e 100%);overflow-y:auto}
+.complete-container{display:flex;flex-direction:column;align-items:center;padding:24px;gap:16px;width:100%;max-width:600px}
+.complete-title{font-size:2.2rem;color:#FFD700;text-shadow:0 0 30px rgba(255,215,0,.5);text-align:center}
+.complete-subtitle{font-size:1.05rem;color:#a0a0b0;text-align:center;line-height:1.6}
+.village-scene{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:420px;padding:20px;background:linear-gradient(180deg,#87CEEB 0%,#87CEEB 35%,#6aaf4c 35%,#4a8a2e 100%);border-radius:24px;border:3px solid rgba(255,215,0,.4);box-shadow:0 0 40px rgba(255,215,0,.15)}
+.scene-building{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:16px;background:rgba(255,255,255,.1);animation:buildReveal .6s ease-out both}
+.scene-building .b-icon{font-size:2.8rem;animation:float 3s ease-in-out infinite}
+.scene-building .b-name{font-size:.7rem;font-weight:700;color:#fff;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.scene-building .b-quality{font-size:.9rem}
+.complete-stats{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.complete-stat{display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(255,255,255,.08);padding:12px 18px;border-radius:16px;min-width:90px}
+.complete-stat .stat-val{font-family:'Fredoka One',cursive;font-size:1.4rem;color:#FFD700}
+.complete-stat .stat-lbl{font-size:.7rem;color:#a0a0b0;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div id="title-screen" class="screen active">
+  <div class="anvil-icon">&#9881;</div>
+  <h1>Word Forge</h1>
+  <p class="subtitle">Build your village, one word at a time!</p><br>
+  <button class="btn btn-primary" onclick="startGame()">Start Building</button>
+</div>
+
+<div id="village-screen" class="screen">
+  <div class="village-header">
+    <h2>&#127969; Ezra's Village</h2>
+    <div class="materials-bar">
+      <div class="material-count">&#129717; <span id="mat-wood">0</span></div>
+      <div class="material-count">&#9935; <span id="mat-stone">0</span></div>
+      <div class="material-count">&#128296; <span id="mat-iron">0</span></div>
+    </div>
+  </div>
+  <div class="village-grid" id="village-grid"></div>
+  <div class="stats-bar">
+    <div class="stat-item">&#127942; Buildings: <strong id="stat-built">0</strong>/9</div>
+    <div class="stat-item">&#128293; Best Streak: <strong id="stat-streak">0</strong></div>
+    <div class="stat-item">&#11088; Total Stars: <strong id="stat-stars">0</strong></div>
+  </div>
+</div>
+
+<div id="decode-screen" class="screen">
+  <div class="build-header" id="decode-bh"></div>
+  <div class="challenge-container">
+    <p class="stage-label">Stage 1: Forge the Word</p>
+    <h2 class="challenge-title">Build the word you hear!</h2>
+    <p class="challenge-instruction" id="decode-instruction"></p>
+    <button class="hear-btn" id="hear-btn" onclick="speakCurrentWord()">&#128264; Hear the Word</button>
+    <div class="anvil-area" id="anvil-area"></div>
+    <div class="letter-tray" id="letter-tray"></div>
+  </div>
+</div>
+
+<div id="read-screen" class="screen">
+  <div class="build-header" id="read-bh"></div>
+  <div class="challenge-container">
+    <p class="stage-label">Stage 2: Heat the Forge</p>
+    <h2 class="challenge-title">Read aloud and tap each word!</h2>
+    <p class="challenge-instruction">Tap each word as you read it. An adult taps &#10060; for misread words.</p>
+    <div class="read-top">
+      <div class="forge-container">
+        <div class="forge-bar"><div class="forge-fill" id="forge-fill"></div></div>
+        <div class="forge-label" id="forge-label">Tap the first word to begin!</div>
+      </div>
+      <button class="miss-btn" id="miss-btn" onclick="logMiss()">&#10060; Miss <span class="miss-count" id="miss-count">0</span></button>
+    </div>
+    <div class="passage-box"><div class="passage-text" id="passage-text"></div></div>
+  </div>
+</div>
+
+<div id="comprehend-screen" class="screen">
+  <div class="build-header" id="comp-bh"></div>
+  <div class="challenge-container">
+    <p class="stage-label">Stage 3: Unlock Materials</p>
+    <h2 class="challenge-title">Answer to collect your reward!</h2>
+    <p class="challenge-instruction" id="comp-question"></p>
+    <div class="comp-options" id="comp-options"></div>
+  </div>
+</div>
+
+<div id="reward-screen" class="screen">
+  <div class="challenge-container">
+    <div class="reward-icon" id="reward-icon"></div>
+    <div class="reward-stars" id="reward-stars"></div>
+    <h2 class="reward-title" id="reward-title"></h2>
+    <p class="reward-detail" id="reward-detail"></p>
+    <div class="reward-materials" id="reward-materials"></div>
+    <button class="btn btn-success" onclick="returnToVillage()">Back to Village</button><br>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="replayChallenge()">Try Again for Better Materials</button>
+  </div>
+</div>
+
+<div id="complete-screen" class="screen">
+  <div class="complete-container">
+    <div style="font-size:4rem;animation:glow 2s ease-in-out infinite alternate">&#127775;</div>
+    <h1 class="complete-title">Village Complete!</h1>
+    <p class="complete-subtitle">Amazing work, Ezra! You built every building!</p>
+    <div class="village-scene" id="village-scene"></div>
+    <div class="complete-stats" id="complete-stats"></div>
+    <button class="btn btn-gold" onclick="resetGame()" style="margin-top:8px">&#127793; Build a New Village</button>
+    <button class="btn btn-secondary" onclick="returnToVillage()" style="margin-top:4px">View Village Map</button>
+  </div>
+</div>
+
+<script>
+// ======== STATE ========
+const S={
+  materials:{wood:0,stone:0,iron:0},curBldg:null,curChallenge:null,
+  streak:0,bestStreak:0,totalStars:0,
+  decodeTarget:'',decodeLIdx:0,
+  readStart:0,readTimes:[],readIdx:0,personalBestWPM:0,
+  usedChallenges:{},gamesCompleted:0,
+  // Build progress: 0-100
+  buildProgress:0,
+  // Read misses
+  readMisses:0,readMissedWords:new Set(),
+  // Comp attempts
+  compAttempts:0
+};
+
+const BLDGS=[
+  {name:"Lumber Mill",icon:"\u{1FA93}",built:false,quality:null},
+  {name:"Stone Quarry",icon:"\u26CF\uFE0F",built:false,quality:null},
+  {name:"Blacksmith",icon:"\u{1F525}",built:false,quality:null},
+  {name:"Bakery",icon:"\u{1F35E}",built:false,quality:null},
+  {name:"Library",icon:"\u{1F4DA}",built:false,quality:null},
+  {name:"Watch Tower",icon:"\u{1F3F0}",built:false,quality:null},
+  {name:"Stable",icon:"\u{1F40E}",built:false,quality:null},
+  {name:"Market",icon:"\u{1F3EA}",built:false,quality:null},
+  {name:"Town Hall",icon:"\u{1F451}",built:false,quality:null},
+];
+
+const BANK=[
+[
+{decodeWords:["planks","fresh","crisp"],passage:"The lumber mill sits at the edge of the forest. Each morning, the workers bring fresh logs from the tall pine trees. They cut the wood into smooth planks. The sound of sawing fills the crisp morning air. Sawdust piles up like golden snow on the ground.",question:"What do the workers cut the logs into?",answers:["Firewood","Smooth planks","Small chips","Round poles"],correctAnswer:1},
+{decodeWords:["trunk","split","grain"],passage:"A huge oak trunk rolls into the mill on iron tracks. The saw blade spins fast and splits the trunk in half. Inside, the wood grain swirls like a fingerprint. Workers stack the boards to dry in the warm sun. The smell of fresh-cut oak fills the whole yard.",question:"What does the wood grain look like?",answers:["A river","A fingerprint","A spider web","A cloud"],correctAnswer:1},
+{decodeWords:["branch","stack","drying"],passage:"After a storm, branches cover the forest floor. The mill workers gather every branch they can find. They sort the wood by size into neat piles. The biggest pieces become beams for new houses. Smaller scraps go into a drying shed for kindling.",question:"What happens to the smallest scraps of wood?",answers:["They are thrown away","They become beams","They go into a drying shed","They are painted"],correctAnswer:2},
+{decodeWords:["timber","creek","haul"],passage:"The timber floats down the creek toward the mill. Workers stand along the bank with long hooked poles. They haul each log out of the cold water. Wet bark peels off in strips on the muddy shore. By noon the log yard is full and ready for cutting.",question:"How do workers get the logs out of the water?",answers:["They swim out","They use long hooked poles","They build a dam","They wait for it to dry"],correctAnswer:1},
+{decodeWords:["sawdust","blade","smooth"],passage:"The big circular blade sings as it cuts through pine. Golden sawdust sprays into the air like tiny stars. A worker guides each board through the blade with care. The fresh-cut surface feels smooth as glass. Children collect sawdust in buckets to spread on garden paths.",question:"What do children use the sawdust for?",answers:["Building sandcastles","Feeding animals","Spreading on garden paths","Making paper"],correctAnswer:2},
+],[
+{decodeWords:["strong","block","dusty"],passage:"The stone quarry is deep and wide. Strong workers chip away at the gray rock with heavy picks. Each block of stone is loaded onto a cart. The carts roll slowly down the dusty path to the village. These stones will become walls and roads.",question:"How are the stone blocks moved to the village?",answers:["Workers carry them","They roll downhill","Loaded onto carts","Horses drag them"],correctAnswer:2},
+{decodeWords:["chisel","crack","ledge"],passage:"The mason holds a sharp chisel against the rock face. One tap of the hammer and a thin crack appears. He follows the crack along a narrow ledge. A perfect slab breaks free and slides to the ground. He smiles because this piece will become a doorstep.",question:"What will the slab of stone become?",answers:["A statue","A doorstep","A bridge","A chimney"],correctAnswer:1},
+{decodeWords:["gravel","slope","rumble"],passage:"Small bits of gravel tumble down the quarry slope. They click and clatter like a handful of marbles. A deep rumble shakes the ground when a big slab falls. Workers wear hard hats to stay safe below. Dust clouds rise and sparkle in the afternoon light.",question:"Why do workers wear hard hats?",answers:["To keep warm","To look fancy","To stay safe from falling rock","To block the sun"],correctAnswer:2},
+{decodeWords:["marble","polish","gleam"],passage:"Deep in the quarry the workers find white marble. They cut it carefully so it does not crack. A polisher rubs the flat surface until it starts to gleam. This beautiful stone will decorate the new town hall. Everyone agrees it is the finest piece they have ever found.",question:"What will the white marble be used for?",answers:["A garden wall","The town hall decoration","A bridge","Kitchen counters"],correctAnswer:1},
+{decodeWords:["boulder","lever","wedge"],passage:"A giant boulder blocks the new tunnel path. Two workers push a long iron lever under the edge. Another drives a wooden wedge into a thin crack. Slowly the boulder tips and rolls to one side. Light floods into the tunnel and fresh air rushes in.",question:"What do the workers use to move the boulder?",answers:["Dynamite","A lever and wedge","Their bare hands","A crane"],correctAnswer:1},
+],[
+{decodeWords:["sparks","bright","strike"],passage:"The blacksmith heats the iron until it glows bright red. Sparks fly as the hammer strikes the metal on the anvil. Clang, clang, clang! He shapes a new horseshoe with strong, steady hands. The smell of hot metal drifts through the open door.",question:"What is the blacksmith making?",answers:["A sword","A horseshoe","A shield","A bell"],correctAnswer:1},
+{decodeWords:["tongs","forge","glow"],passage:"The forge fire roars with a blast of air from the bellows. The blacksmith grips a bar of iron with heavy tongs. He holds it in the flames until it starts to glow orange. Then he lays it on the anvil and begins to shape a hinge. Sweat drips from his brow in the blazing heat.",question:"What tool holds the hot iron?",answers:["Gloves","A bucket","Tongs","A rope"],correctAnswer:2},
+{decodeWords:["anvil","clang","hammer"],passage:"The anvil sits on a thick oak stump in the center of the shop. Every hit of the hammer makes a loud clang that echoes outside. The blacksmith sings along to the rhythm as he works. A row of finished nails cools on a stone shelf. Village builders line up at the door waiting for supplies.",question:"What is cooling on the stone shelf?",answers:["Horseshoes","Swords","Nails","Rings"],correctAnswer:2},
+{decodeWords:["quench","steam","plunge"],passage:"The red-hot blade hisses when the blacksmith plunges it into water. A cloud of steam rises up to the rafters. This quench makes the metal hard and strong. He lifts the blade out and checks the edge with his thumb. It is sharp enough to cut a falling feather.",question:"Why does he put the blade in water?",answers:["To clean it","To make it hard and strong","To cool his hands","To wash off dirt"],correctAnswer:1},
+{decodeWords:["bellows","flame","craft"],passage:"A young helper pumps the leather bellows up and down. Each pump sends a rush of air into the fire. The flames leap higher and turn from orange to white. The blacksmith nods and slides a piece of iron into the blaze. Learning this craft takes many years of practice and patience.",question:"What do the bellows do?",answers:["Cool the metal","Make noise","Pump air into the fire","Hold the iron"],correctAnswer:2},
+],[
+{decodeWords:["sweet","flour","knead"],passage:"The bakery opens before the sun comes up. Sweet smells of fresh bread float down the street. The baker mixes flour, water, and yeast in a big bowl. She kneads the dough until it is soft and smooth. By sunrise, golden loaves line the shelves.",question:"When does the bakery open?",answers:["At noon","At sunset","Before sunrise","After lunch"],correctAnswer:2},
+{decodeWords:["crust","risen","oven"],passage:"The dough has risen to twice its size overnight. The baker punches it down gently with her fists. She shapes round loaves and slides them into the hot oven. After twenty minutes a golden crust forms on top. The whole village wakes up to the wonderful smell.",question:"What forms on top of the bread?",answers:["Sugar coating","A golden crust","Melted cheese","Frosting"],correctAnswer:1},
+{decodeWords:["yeast","bubble","proof"],passage:"Tiny grains of yeast come alive in warm water. Small bubbles rise to the surface and pop. This means the yeast is ready to proof the dough. The baker stirs it into a mountain of soft white flour. Soon the whole bowl of dough begins to puff up like a pillow.",question:"What shows the yeast is working?",answers:["It turns blue","It makes a sound","Bubbles rise to the surface","It gets cold"],correctAnswer:2},
+{decodeWords:["glaze","pastry","treat"],passage:"Today the baker makes special pastry rolls for the harvest feast. She brushes each one with a shiny egg glaze. Raisins and cinnamon peek out from the spiral shapes. Children press their noses to the window hoping for a treat. The baker always saves the first warm roll for the smallest child.",question:"Who gets the first warm roll?",answers:["The mayor","The oldest child","Her own family","The smallest child"],correctAnswer:3},
+{decodeWords:["wheat","grind","golden"],passage:"Sacks of golden wheat arrive at the bakery from the farm. The baker pours the grain into a stone mill to grind it. Fine powder falls into a wooden box below. She sifts the flour twice to make it extra smooth. Good bread always starts with the finest flour in the land.",question:"How many times is the flour sifted?",answers:["Once","Twice","Three times","Not sifted"],correctAnswer:1},
+],[
+{decodeWords:["quiet","shelves","wonder"],passage:"The library is the quietest place in the village. Tall shelves hold hundreds of books with worn leather covers. A kind old woman helps children find their favorite stories. She reads aloud every afternoon, and the children sit in a circle to listen. Their eyes grow wide with wonder.",question:"What does the old woman do every afternoon?",answers:["Writes new books","Reads aloud to children","Sorts the shelves","Locks the doors"],correctAnswer:1},
+{decodeWords:["chapter","candle","dusty"],passage:"A dusty book sits on the top shelf where no one can reach. The librarian brings a tall ladder and carefully lifts it down. She opens to the first chapter and blows away the dust. By candle light she reads about a kingdom lost in the clouds. She decides this story must be shared with everyone.",question:"Where was the dusty book found?",answers:["Under a table","In a closet","On the top shelf","Behind the door"],correctAnswer:2},
+{decodeWords:["scroll","ancient","inked"],passage:"Behind a locked glass case lies an ancient scroll. The edges are yellow and thin as a butterfly wing. Beautiful letters were inked by hand long ago. The librarian opens the case only on special days. Everyone gathers close to admire the careful handwriting.",question:"Why are the scroll edges yellow?",answers:["They were painted","The scroll is very old","Juice was spilled","Left in the sun"],correctAnswer:1},
+{decodeWords:["fable","moral","clever"],passage:"The children's favorite section is full of fable books. Each story has talking animals who learn a lesson. A clever fox, a brave mouse, and a wise old owl appear again and again. At the end of every fable there is a moral to remember. The children try to guess the moral before the librarian reads it.",question:"What do the children try to guess?",answers:["The title","The author","The moral of the story","The page count"],correctAnswer:2},
+{decodeWords:["atlas","voyage","chart"],passage:"A giant atlas sits open on the reading table. Its pages show oceans, mountains, and far-off lands. Children trace the charts with their fingers and dream of a voyage. One boy finds a tiny island shaped like a star. He vows that one day he will sail there and explore it.",question:"What shape is the island?",answers:["A heart","A circle","A star","A triangle"],correctAnswer:2},
+],[
+{decodeWords:["guard","bright","tower"],passage:"The watch tower stands on the highest hill. From the top, a guard can see for miles in every direction. At night, a bright lantern burns at the peak. It guides travelers safely home through the dark. The tower keeps the whole village safe.",question:"What guides travelers home at night?",answers:["A flag","A bright lantern","A loud bell","A bonfire"],correctAnswer:1},
+{decodeWords:["signal","beacon","flame"],passage:"When danger comes the guard lights the signal beacon. A tall flame leaps from the iron basket on the roof. Villages across the valley see the light and prepare. Runners dash from house to house spreading the word. Within minutes every family is safe inside the walls.",question:"What does the guard light when danger comes?",answers:["A candle","Fireworks","The signal beacon","A torch parade"],correctAnswer:2},
+{decodeWords:["spiral","climb","dizzy"],passage:"The tower has a spiral staircase made of worn stone steps. It takes one hundred steps to climb all the way to the top. New guards feel dizzy when they first look down. But after a week they get used to the height. The view of green hills and silver rivers is worth every step.",question:"How many steps does the staircase have?",answers:["Fifty","Seventy-five","One hundred","Two hundred"],correctAnswer:2},
+{decodeWords:["scout","shield","brave"],passage:"A brave young scout takes the dawn watch each morning. She carries a small wooden shield and a brass horn. Her eyes scan the tree line for any movement. A family of deer steps out of the mist and she smiles. She blows the horn only when real danger appears.",question:"What does the scout carry besides a shield?",answers:["A sword","A brass horn","A lantern","A bow"],correctAnswer:1},
+{decodeWords:["frost","cloak","shiver"],passage:"Winter nights on the tower are bitterly cold. Frost coats the stone railing like white sugar. The guard wraps a thick wool cloak around his shoulders. He stamps his boots and tries not to shiver. A cup of hot cider from the kitchen keeps him going until sunrise.",question:"What helps the guard stay warm until sunrise?",answers:["A bonfire","Dancing around","Hot cider","A thick blanket"],correctAnswer:2},
+],[
+{decodeWords:["stable","brushes","nuzzle"],passage:"The stable is warm and smells of fresh hay. Three brown horses and a gray pony live here. The stable boy brushes their coats each morning until they shine. He gives them oats and cool water from the well. The horses nuzzle his pockets for apple treats.",question:"How many horses live in the stable?",answers:["Two horses","Four horses","Three horses and a pony","Five ponies"],correctAnswer:2},
+{decodeWords:["saddle","bridle","trot"],passage:"The stable girl lifts a leather saddle onto the tall mare. She fastens the bridle and checks that the straps are snug. The mare flicks her ears and stamps one hoof with excitement. Together they trot out of the yard and onto the open trail. Wind rushes through the girl's hair as they ride.",question:"What does the mare do when excited?",answers:["Lies down","Flicks her ears and stamps","Runs away","Neighs loudly"],correctAnswer:1},
+{decodeWords:["foal","wobbly","gentle"],passage:"A brand new foal was born in the stable last night. Its legs are long and wobbly like stilts. The mother stands close and nudges it gently to its feet. By morning the little foal takes its first shaky steps. The whole village comes to peek through the stable door.",question:"What are the foal's legs like?",answers:["Short and strong","Long and wobbly","Thick and heavy","Tiny and fast"],correctAnswer:1},
+{decodeWords:["gallop","mane","hooves"],passage:"Thunder rolls across the field but it is not a storm. It is the sound of hooves pounding the soft ground. A black horse with a wild mane races around the meadow. Its gallop is so fast that dust flies up behind it. The stable master whistles and the horse slows to a walk.",question:"What makes the thundering sound?",answers:["A real storm","A drumming contest","The horse's hooves","A waterfall"],correctAnswer:2},
+{decodeWords:["straw","manger","munch"],passage:"Fresh golden straw covers the floor of every stall. The horses munch oats from a long wooden manger. A tabby cat sleeps curled up on a bale in the corner. Barn swallows swoop through the open rafters above. The stable is one of the coziest places in the village.",question:"Where does the cat sleep?",answers:["On a horse","In the manger","On a bale of straw","By the door"],correctAnswer:2},
+],[
+{decodeWords:["market","cheese","stalls"],passage:"The market is the busiest spot in the village. Farmers bring baskets of ripe apples and plump tomatoes. A cheese maker sets out big golden wheels of cheese. People chat and laugh as they shop. Children run between the colorful stalls, hoping for a sweet treat.",question:"What does the cheese maker bring?",answers:["Bread loaves","Golden wheels of cheese","Pots of honey","Fresh milk"],correctAnswer:1},
+{decodeWords:["barter","coins","haggle"],passage:"Not everyone pays with coins at the village market. Some people barter by trading what they have for what they need. A farmer swaps eggs for a jar of berry jam. Two women haggle over the price of a wool blanket. In the end they shake hands and both walk away smiling.",question:"What does barter mean?",answers:["To argue loudly","To steal things","To trade instead of using money","To sell for a high price"],correctAnswer:2},
+{decodeWords:["basket","ripe","harvest"],passage:"Harvest time brings the biggest market of the year. Every basket overflows with ripe fruits and vegetables. Orange pumpkins sit in rows like round little suns. The sweet smell of cider fills the cool autumn air. Musicians play fiddles while families enjoy the celebration.",question:"What season is harvest time?",answers:["Spring","Summer","Autumn","Winter"],correctAnswer:2},
+{decodeWords:["spice","aroma","pouch"],passage:"The spice trader arrives from a land across the sea. He opens small leather pouches filled with colorful powders. A wonderful aroma of cinnamon and ginger fills the air. People lean in close to sniff each rare treasure. Even a tiny pinch of saffron costs more than a silver coin.",question:"Where does the spice trader come from?",answers:["The next village","A land across the sea","The mountains","The forest"],correctAnswer:1},
+{decodeWords:["ribbon","craft","weave"],passage:"A craft maker sits behind a wooden loom at her market stall. Her fingers weave bright threads into beautiful ribbon. Red, blue, green, and gold stripes dance across the fabric. Girls choose their favorites to tie in their hair. The craft maker hums a cheerful tune while she works.",question:"What does the craft maker make?",answers:["Pottery","Candles","Ribbons","Jewelry"],correctAnswer:2},
+],[
+{decodeWords:["center","square","chime"],passage:"The town hall sits right in the center of the village square. Its big wooden doors are always open. Inside, the village leaders meet to make important plans. A large bell in the tower rings at noon each day. Everyone in the village can hear it chime.",question:"Where is the town hall located?",answers:["On a hilltop","By the river","In the center of the village square","At the forest edge"],correctAnswer:2},
+{decodeWords:["banner","gather","speech"],passage:"Bright banners hang from the town hall balcony today. The whole village gathers in the square for a special speech. The mayor stands at the podium and clears her throat. She announces that a new school will be built by spring. The crowd cheers and tosses their hats in the air.",question:"What does the mayor announce?",answers:["A new holiday","A new school","A new market","A new bridge"],correctAnswer:1},
+{decodeWords:["scroll","decree","seal"],passage:"The town clerk unrolls a long scroll on the oak table. Written on it is a new decree about the harvest festival. A red wax seal at the bottom makes it official. The mayor signs her name with a feather quill. Copies are posted on every door so all can read the news.",question:"What makes the decree official?",answers:["The mayor's hat","A red wax seal","A gold coin","A loud trumpet"],correctAnswer:1},
+{decodeWords:["debate","council","vote"],passage:"The village council meets every week inside the great hall. Six leaders sit in tall chairs around a round table. They debate whether to build a new well or fix the old bridge. After everyone speaks the council takes a vote. The bridge repair wins by four votes to two.",question:"What does the council decide to do?",answers:["Build a new well","Fix the old bridge","Plant more trees","Hire more guards"],correctAnswer:1},
+{decodeWords:["feast","toast","merry"],passage:"Once a year the town hall hosts a grand feast for everyone. Long tables fill the great hall from wall to wall. Roast chicken, warm pies, and sweet puddings cover every inch. The mayor raises her glass and makes a toast to the village. Music plays and the people dance until the stars come out.",question:"How often is the grand feast?",answers:["Every month","Every week","Once a year","Twice a year"],correctAnswer:2},
+]
+];
+
+// ======== SPEECH ========
+function getBestVoice(){const v=speechSynthesis.getVoices(),p=["samantha","google us english","microsoft aria","microsoft jenny","karen","daniel","google uk english female","alex","victoria","microsoft zira"];for(const n of p){const f=v.find(x=>x.name.toLowerCase().includes(n)&&x.lang.startsWith("en"));if(f)return f;}return v.find(x=>x.lang.startsWith("en-US"))||v.find(x=>x.lang.startsWith("en"))||v[0]||null;}
+function speakCurrentWord(){if(!speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(S.decodeTarget);const v=getBestVoice();if(v)u.voice=v;u.rate=0.78;u.pitch=1.05;u.volume=1;speechSynthesis.speak(u);}
+
+// ======== HELPERS ========
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));const el=document.getElementById(id);el.classList.add('active','fade-in');setTimeout(()=>el.classList.remove('fade-in'),400);}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+
+function save(){try{localStorage.setItem('wordforge',JSON.stringify({buildings:BLDGS.map(b=>({built:b.built,quality:b.quality})),materials:S.materials,bestStreak:S.bestStreak,totalStars:S.totalStars,personalBestWPM:S.personalBestWPM,usedChallenges:S.usedChallenges,gamesCompleted:S.gamesCompleted}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem('wordforge'));if(!d)return;d.buildings.forEach((b,i)=>{BLDGS[i].built=b.built;BLDGS[i].quality=b.quality;});S.materials=d.materials||S.materials;S.bestStreak=d.bestStreak||0;S.totalStars=d.totalStars||0;S.personalBestWPM=d.personalBestWPM||0;S.usedChallenges=d.usedChallenges||{};S.gamesCompleted=d.gamesCompleted||0;}catch(e){}}
+
+function pickChallenge(idx){const bank=BANK[idx];if(!S.usedChallenges[idx])S.usedChallenges[idx]=[];let av=bank.map((_,i)=>i).filter(i=>!S.usedChallenges[idx].includes(i));if(!av.length){S.usedChallenges[idx]=[];av=bank.map((_,i)=>i);}const p=av[Math.floor(Math.random()*av.length)];S.usedChallenges[idx].push(p);return bank[p];}
+
+// ======== BUILD PROGRESS HEADER ========
+function renderBuildHeader(containerId, stage){
+  const c=document.getElementById(containerId);
+  const b=BLDGS[S.curBldg];
+  const pct=S.buildProgress;
+  const qClass=pct>=80?'q-gold':pct>=50?'q-silver':'q-bronze';
+  const qLabel=pct>=80?'Gold':pct>=50?'Silver':'Bronze';
+  // Icon scale based on progress
+  const iconScale=0.5+((pct/100)*0.5);
+  c.innerHTML=`
+    <div class="bh-icon" id="bh-icon" style="transform:scale(${iconScale});opacity:${0.4+pct/166}">${b.icon}</div>
+    <div class="bh-right">
+      <div class="bh-label"><span class="bh-label-name">${b.name}</span><span>${qLabel} · ${Math.round(pct)}%</span></div>
+      <div class="bh-bar">
+        <div class="bh-fill ${qClass}" style="width:${pct}%"></div>
+        <div class="bh-tier" style="left:50%"></div>
+        <div class="bh-tier" style="left:80%"></div>
+      </div>
+      <div class="bh-dots">
+        ${[0,1,2].map(i=>`<div class="bh-dot ${i===stage?'active':i<stage?'done':''}"></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function animateBuildIcon(cls){
+  const icon=document.getElementById('bh-icon');
+  if(!icon)return;
+  icon.classList.remove('grow','shrink','big-grow');
+  void icon.offsetWidth;
+  icon.classList.add(cls);
+}
+
+function addProgress(amount){
+  S.buildProgress=clamp(S.buildProgress+amount,0,100);
+}
+function removeProgress(amount){
+  S.buildProgress=clamp(S.buildProgress-amount,0,100);
+}
+
+// ======== VILLAGE ========
+function renderVillage(){
+  const grid=document.getElementById('village-grid');grid.innerHTML='';
+  const next=BLDGS.findIndex(x=>!x.built);
+  if(BLDGS.every(b=>b.built)){showComplete();return;}
+  BLDGS.forEach((b,i)=>{
+    const slot=document.createElement('div');
+    if(b.built){slot.className='building-slot built';const q=b.quality==='gold'?'\u2B50':b.quality==='silver'?'\u{1FA99}':'\u{1F7E0}';slot.innerHTML=`<div class="building-quality">${q}</div><div class="building-icon">${b.icon}</div><div class="building-name">${b.name}</div>`;}
+    else if(i===next){slot.className='building-slot available';slot.innerHTML=`<div class="building-icon" style="opacity:.7">${b.icon}</div><div class="building-name">Build ${b.name}</div>`;slot.onclick=()=>startChallenge(i);}
+    else{slot.className='building-slot locked';slot.innerHTML=`<div class="building-icon" style="opacity:.3">\u{1F512}</div><div class="building-name" style="opacity:.5">${b.name}</div>`;}
+    grid.appendChild(slot);
+  });
+  document.getElementById('mat-wood').textContent=S.materials.wood;
+  document.getElementById('mat-stone').textContent=S.materials.stone;
+  document.getElementById('mat-iron').textContent=S.materials.iron;
+  document.getElementById('stat-built').textContent=BLDGS.filter(b=>b.built).length;
+  document.getElementById('stat-streak').textContent=S.bestStreak;
+  document.getElementById('stat-stars').textContent=S.totalStars;
+}
+
+function showComplete(){
+  const scene=document.getElementById('village-scene');scene.innerHTML='';
+  BLDGS.forEach((b,i)=>{const qI=b.quality==='gold'?'\u2B50':b.quality==='silver'?'\u{1FA99}':'\u{1F7E0}';const qB=b.quality==='gold'?'#FFD700':b.quality==='silver'?'#C0C0C0':'#CD7F32';const d=document.createElement('div');d.className='scene-building';d.style.animationDelay=(i*.12)+'s';d.style.borderBottom=`3px solid ${qB}`;d.innerHTML=`<div class="b-quality">${qI}</div><div class="b-icon">${b.icon}</div><div class="b-name">${b.name}</div>`;scene.appendChild(d);});
+  const stats=document.getElementById('complete-stats');stats.innerHTML='';
+  [[S.totalStars,'\u2B50 Stars'],[S.bestStreak,'\u{1F525} Streak'],[S.personalBestWPM,'\u{1F4A8} WPM'],[BLDGS.filter(b=>b.quality==='gold').length,'\u2B50 Gold'],[BLDGS.filter(b=>b.quality==='silver').length,'\u{1FA99} Silver'],[BLDGS.filter(b=>b.quality==='bronze').length,'\u{1F7E0} Bronze']].forEach(([v,l])=>{const d=document.createElement('div');d.className='complete-stat';d.innerHTML=`<div class="stat-val">${v}</div><div class="stat-lbl">${l}</div>`;stats.appendChild(d);});
+  show('complete-screen');launchConfetti();
+}
+
+function resetGame(){BLDGS.forEach(b=>{b.built=false;b.quality=null;});S.materials={wood:0,stone:0,iron:0};S.streak=0;S.usedChallenges={};S.gamesCompleted++;save();show('village-screen');renderVillage();}
+function startGame(){load();show('village-screen');renderVillage();}
+
+// ======== CHALLENGE FLOW ========
+let dwQueue=[],dwIdx=0;
+
+function startChallenge(i){
+  S.curBldg=i;S.curChallenge=pickChallenge(i);S.buildProgress=0;S.compAttempts=0;
+  dwQueue=[...S.curChallenge.decodeWords];dwIdx=0;showDecodeWord();
+}
+function replayChallenge(){
+  S.curChallenge=pickChallenge(S.curBldg);S.buildProgress=0;S.compAttempts=0;
+  dwQueue=[...S.curChallenge.decodeWords];dwIdx=0;showDecodeWord();
+}
+
+// ======== DECODE ========
+// Each correct letter: +30/(total letters across all words)
+// Each wrong letter: -4
+function calcDecodeLetterValue(){
+  const total=dwQueue.reduce((s,w)=>s+w.length,0);
+  return 30/total;
+}
+
+function showDecodeWord(){
+  const word=dwQueue[dwIdx];S.decodeTarget=word.toLowerCase();S.decodeLIdx=0;
+  renderBuildHeader('decode-bh',0);
+  const anvil=document.getElementById('anvil-area');anvil.innerHTML='';
+  for(let i=0;i<word.length;i++){const s=document.createElement('div');s.className='anvil-slot';s.id='slot-'+i;anvil.appendChild(s);}
+  const tray=document.getElementById('letter-tray');tray.innerHTML='';
+  shuffle(word.split('')).forEach((ch,i)=>{const t=document.createElement('div');t.className='letter-tile';t.textContent=ch.toLowerCase();t.dataset.letter=ch.toLowerCase();t.dataset.index=i;t.onclick=()=>handleLetter(t);tray.appendChild(t);});
+  document.getElementById('decode-instruction').textContent='Listen, then tap letters in order.'+(dwQueue.length>1?` Word ${dwIdx+1} of ${dwQueue.length}`:'');
+  show('decode-screen');setTimeout(()=>speakCurrentWord(),500);
+}
+
+function handleLetter(tile){
+  const expected=S.decodeTarget[S.decodeLIdx];
+  if(tile.dataset.letter===expected){
+    tile.classList.add('used');
+    const slot=document.getElementById('slot-'+S.decodeLIdx);slot.textContent=tile.dataset.letter;slot.classList.add('filled');
+    S.decodeLIdx++;
+    addProgress(calcDecodeLetterValue());
+    renderBuildHeader('decode-bh',0);animateBuildIcon('grow');
+    if(S.decodeLIdx===S.decodeTarget.length){
+      for(let i=0;i<S.decodeTarget.length;i++)document.getElementById('slot-'+i).classList.add('correct-flash');
+      S.streak++;if(S.streak>S.bestStreak)S.bestStreak=S.streak;
+      dwIdx++;
+      if(dwIdx<dwQueue.length)setTimeout(()=>showDecodeWord(),1000);
+      else setTimeout(()=>showRead(),1000);
+    }
+  }else{
+    tile.style.pointerEvents='none';
+    const slot=document.getElementById('slot-'+S.decodeLIdx);slot.classList.add('wrong-flash');
+    removeProgress(4);renderBuildHeader('decode-bh',0);animateBuildIcon('shrink');
+    setTimeout(()=>{slot.classList.remove('wrong-flash');tile.style.pointerEvents='auto';},500);
+  }
+}
+
+// ======== READ ========
+// Each word tapped: +30/(total words)
+// Each miss: -3
+function showRead(){
+  const c=S.curChallenge;
+  S.readMisses=0;S.readMissedWords=new Set();S.readIdx=0;S.readTimes=[];S.readStart=0;
+  document.getElementById('miss-count').textContent='0';
+  renderBuildHeader('read-bh',1);
+  const words=c.passage.split(/\s+/);
+  const ct=document.getElementById('passage-text');ct.innerHTML='';
+  words.forEach((w,i)=>{const span=document.createElement('span');span.className='word-token'+(i===0?' current':' unread');span.textContent=w;span.dataset.index=i;span.onclick=()=>handleWord(i);ct.appendChild(span);});
+  document.getElementById('forge-fill').style.width='0%';
+  document.getElementById('forge-fill').style.background='linear-gradient(90deg,#CD7F32,#e94560,#FFD700)';
+  document.getElementById('forge-fill').style.filter='brightness(1)';
+  document.getElementById('forge-label').textContent='Tap the first word to begin!';
+  show('read-screen');
+}
+
+function handleWord(index){
+  if(index!==S.readIdx)return;
+  const now=Date.now();const words=document.querySelectorAll('.word-token');
+  if(index===0)S.readStart=now;
+  S.readTimes.push(now);
+  words[index].classList.remove('current');
+  if(S.readMissedWords.has(index)){words[index].classList.add('missed');}
+  else{words[index].classList.add('read');}
+  const total=words.length;
+  const pct=((index+1)/total)*100;
+  document.getElementById('forge-fill').style.width=pct+'%';
+  // Add build progress for each word
+  if(!S.readMissedWords.has(index)){
+    addProgress(30/total);renderBuildHeader('read-bh',1);animateBuildIcon('grow');
+  }
+  if(index>2){const elapsed=(now-S.readStart)/60000;const wpm=(index+1)/elapsed;updateForge(wpm);}
+  S.readIdx++;
+  if(S.readIdx<total){words[S.readIdx].classList.remove('unread');words[S.readIdx].classList.add('current');}
+  else{setTimeout(()=>showComp(),600);}
+}
+
+function logMiss(){
+  if(S.readIdx<=0)return;
+  // Mark the current word as missed (the one being read now, or just read)
+  const idx=S.readIdx>0?S.readIdx-1:0;
+  if(S.readMissedWords.has(idx))return;
+  S.readMisses++;S.readMissedWords.add(idx);
+  document.getElementById('miss-count').textContent=S.readMisses;
+  // Mark the word visually
+  const words=document.querySelectorAll('.word-token');
+  if(words[idx]){words[idx].classList.remove('read');words[idx].classList.add('missed');}
+  removeProgress(3);renderBuildHeader('read-bh',1);animateBuildIcon('shrink');
+}
+
+function updateForge(wpm){
+  const label=document.getElementById('forge-label');const fill=document.getElementById('forge-fill');
+  const baseline=S.personalBestWPM>0?S.personalBestWPM:70;
+  if(wpm>=baseline*1.1){label.textContent='\u{1F525} BLAZING! The forge is white-hot!';fill.style.background='linear-gradient(90deg,#FFD700,#fff,#FFD700)';fill.style.filter='brightness(1.3)';}
+  else if(wpm>=baseline*0.85){label.textContent='\u{1F525} Hot! The forge glows bright!';fill.style.background='linear-gradient(90deg,#e94560,#FFD700)';fill.style.filter='brightness(1.1)';}
+  else{label.textContent='\u2728 Warming up... keep going!';fill.style.background='linear-gradient(90deg,#CD7F32,#e94560)';fill.style.filter='brightness(1)';}
+}
+
+// ======== COMPREHEND ========
+// Correct first try: +40  Correct second try: +20  Each wrong: -10
+function showComp(){
+  const c=S.curChallenge;S.compAttempts=0;
+  renderBuildHeader('comp-bh',2);
+  document.getElementById('comp-question').textContent=c.question;
+  const opt=document.getElementById('comp-options');opt.innerHTML='';
+  c.answers.forEach((a,i)=>{const btn=document.createElement('div');btn.className='comp-option';btn.textContent=a;btn.onclick=()=>handleComp(i,btn);opt.appendChild(btn);});
+  show('comprehend-screen');
+}
+
+function handleComp(index,btn){
+  const c=S.curChallenge;
+  const all=document.querySelectorAll('.comp-option');
+  all.forEach(b=>b.style.pointerEvents='none');
+  S.compAttempts++;
+  if(index===c.correctAnswer){
+    btn.classList.add('correct');S.streak++;if(S.streak>S.bestStreak)S.bestStreak=S.streak;
+    if(S.compAttempts===1){addProgress(40);animateBuildIcon('big-grow');}
+    else{addProgress(20);animateBuildIcon('grow');}
+    renderBuildHeader('comp-bh',2);
+    setTimeout(()=>showReward(),800);
+  }else{
+    btn.classList.add('incorrect');S.streak=0;
+    removeProgress(10);renderBuildHeader('comp-bh',2);animateBuildIcon('shrink');
+    setTimeout(()=>{all.forEach(b=>{b.classList.remove('correct','incorrect');b.style.pointerEvents='auto';});},1200);
+  }
+}
+
+// ======== REWARD ========
+function showReward(){
+  const words=S.curChallenge.passage.split(/\s+/);
+  const totalTime=(S.readTimes[S.readTimes.length-1]-S.readStart)/60000;
+  const wpm=Math.round(words.length/totalTime);
+  if(wpm>S.personalBestWPM)S.personalBestWPM=wpm;
+
+  const pct=S.buildProgress;
+  let quality,stars,amt;
+  if(pct>=80){quality='gold';stars=3;amt=3;}
+  else if(pct>=50){quality='silver';stars=2;amt=2;}
+  else{quality='bronze';stars=1;amt=1;}
+
+  S.materials.wood+=amt;S.materials.stone+=amt;S.materials.iron+=amt;
+  S.totalStars+=stars;
+  BLDGS[S.curBldg].built=true;BLDGS[S.curBldg].quality=quality;
+  const qN={gold:'Gold',silver:'Silver',bronze:'Bronze'};
+  const qC={gold:'#FFD700',silver:'#C0C0C0',bronze:'#CD7F32'};
+  document.getElementById('reward-icon').textContent=BLDGS[S.curBldg].icon;
+  document.getElementById('reward-stars').innerHTML=[0,1,2].map(i=>`<span style="color:${i<stars?'#FFD700':'rgba(255,255,255,.15)'}">\u2B50</span>`).join('');
+  document.getElementById('reward-title').textContent=BLDGS[S.curBldg].name+' Built!';
+  document.getElementById('reward-title').style.color=qC[quality];
+
+  let detail=`${qN[quality]} quality! You read at <strong>${wpm} WPM</strong>.`;
+  if(S.readMisses>0)detail+=`<br>${S.readMisses} word${S.readMisses>1?'s':''} missed during reading.`;
+  if(S.compAttempts===1)detail+=`<br>\u{1F389} Comprehension correct on the first try!`;
+  else detail+=`<br>Comprehension took ${S.compAttempts} attempts.`;
+
+  document.getElementById('reward-detail').innerHTML=detail;
+  document.getElementById('reward-materials').innerHTML=
+    `<div class="reward-material">\u{1FA93}<span>+${amt}</span></div>`+
+    `<div class="reward-material">\u26CF\uFE0F<span>+${amt}</span></div>`+
+    `<div class="reward-material">\u{1F528}<span>+${amt}</span></div>`;
+  show('reward-screen');launchConfetti();save();
+}
+
+function returnToVillage(){renderVillage();show('village-screen');}
+
+function launchConfetti(){const colors=['#FFD700','#e94560','#4ade80','#60a5fa','#f97316','#c084fc'];for(let i=0;i<40;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.background=colors[Math.floor(Math.random()*colors.length)];p.style.borderRadius=Math.random()>.5?'50%':'2px';p.style.width=(6+Math.random()*8)+'px';p.style.height=(6+Math.random()*8)+'px';p.style.animationDuration=(2+Math.random()*2)+'s';p.style.animationDelay=Math.random()*.5+'s';document.body.appendChild(p);setTimeout(()=>p.remove(),4500);}}
+
+if(speechSynthesis){speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();}
+</script>
+</body>
+</html>
